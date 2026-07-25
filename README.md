@@ -6,8 +6,7 @@ A simple to-do list API built with Python and FastAPI for the FlyRank Internship
 
 1. **Clone the repo and enter the folder:**
    ```bash
-   git clone <your-repo-link>
-   cd task-api
+   git clone https://github.com/RasemMaraqa/FlyRankAI-A1.git
 
 2. **Create a virtual environment:**
    ```bash
