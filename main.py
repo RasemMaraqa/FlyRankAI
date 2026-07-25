@@ -68,6 +68,7 @@ def get_task(task_id: int):
 
 @app.post("/tasks", status_code=status.HTTP_201_CREATED)
 def create_task(task: Task):
+    '''create a new Task'''
     if task.title.strip() == "":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -80,3 +81,31 @@ def create_task(task: Task):
     }
     tasks.append(new_task)
     return new_task
+
+
+@app.put("/tasks/{task_id}")
+def update_task(task_id: int, task: Task):
+    '''update a single Task'''
+    for t in tasks:
+        if t["id"] == task_id:
+            t["title"] = task.title
+            return t
+
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"task {task_id} not found"
+    )
+
+
+@app.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_task(task_id: int):
+    '''delete a single Task using id'''
+    for task in tasks:
+        if task["id"] == task_id:
+            tasks.remove(task)
+            return
+
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"task {task_id} not found"
+    )
