@@ -40,3 +40,7 @@ A simple to-do list API built with Python and FastAPI for the FlyRank Internship
 
 
 <img width="1574" height="617" alt="image" src="https://github.com/user-attachments/assets/ce7d246e-bd8d-44a1-a141-054683b3cf41" />
+
+
+
+
