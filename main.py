@@ -8,6 +8,11 @@ app = FastAPI()
 
 class Task(BaseModel):
     title: str
+    
+
+class TaskUpdate(BaseModel):
+    title: str
+    done: bool
 
 
 def get_db():
@@ -76,8 +81,8 @@ def get_tasks():
     conn = get_db()
     rows = conn.execute("SELECT * FROM tasks").fetchall()
     conn.close()
-         
-    return [dict(row) for row  in rows]
+
+    return [dict(row) for row in rows]
 
 
 @app.get("/tasks/{task_id}")
@@ -118,28 +123,50 @@ def create_task(body: Task):
 
 
 @app.put("/tasks/{task_id}")
-def update_task(task_id: int, task: Task):
-    '''update a single Task'''
-    for t in tasks:
-        if t["id"] == task_id:
-            t["title"] = task.title
-            return t
+def update_task(task_id: int, body: TaskUpdate):
+    title = body.title.strip()
+    if not title:
+        raise HTTPException(
+            status_code=status.HTTP_404_BAD_REQUEST,
+            detail="title cannot be empty"
+        )
+    conn = get_db()
+    cursor = conn.cursor()
+    isexist = cursor.execute(
+        "SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
+    if isexist is None:
+        conn.close()
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"task {task_id} not found"
+        )
 
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail=f"task {task_id} not found"
-    )
+    cursor.execute("UPDATE tasks SET title = ?, done = ? WHERE id = ?",
+                   (title, int(body.done), task_id))
+    conn.commit()
+    updated_task = cursor.execute("SELECT * FROM tasks WHERE id = ?",
+                                  (task_id,)).fetchone()
+    conn.close()
+
+    return dict(updated_task)
 
 
 @app.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_task(task_id: int):
-    '''delete a single Task using id'''
-    for task in tasks:
-        if task["id"] == task_id:
-            tasks.remove(task)
-            return
+    conn = get_db()
+    cursor = conn.cursor()
 
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail=f"task {task_id} not found"
-    )
+    isexist = cursor.execute("SELECT * FROM tasks WHERE id = ?",
+                             (task_id,)).fetchone()
+    if isexist is None:
+        conn.close()
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="task not found"
+        )
+
+    cursor.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+    conn.commit()
+    conn.close()
+
+    return {"msg": "deleted"}
