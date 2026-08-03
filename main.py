@@ -76,41 +76,45 @@ def get_tasks():
     conn = get_db()
     rows = conn.execute("SELECT * FROM tasks").fetchall()
     conn.close()
-            
+         
     return [dict(row) for row  in rows]
 
 
 @app.get("/tasks/{task_id}")
 def get_task(task_id: int):
     conn = get_db()
-    row = conn.execute("SELECT * FROM tasks WHERE id = ?", 
+    row = conn.execute("SELECT * FROM tasks WHERE id = ?",
                        (task_id,)).fetchone()
     conn.close()
-    
+
     if row is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found "
         )
-        
+
     return dict(row)
 
 
 @app.post("/tasks", status_code=status.HTTP_201_CREATED)
-def create_task(task: Task):
+def create_task(body: Task):
     '''create a new Task'''
-    if task.title.strip() == "":
+    title = body.title.strip()
+    if not title:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="task title cannot be empty"
+            detail="Title cannot be empty"
         )
-    new_task = {
-        "id": len(tasks) + 1,
-        "title": task.title,
-        "done": False
-    }
-    tasks.append(new_task)
-    return new_task
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO tasks (title, done) VALUES (?, ?)", (title, 0))
+    conn.commit()
+    new_id = cursor.lastrowid
+    new_task = conn.execute("SELECT * FROM tasks WHERE id = ?",
+                            (new_id,)).fetchone()
+    conn.close()
+
+    return dict(new_task)
 
 
 @app.put("/tasks/{task_id}")
