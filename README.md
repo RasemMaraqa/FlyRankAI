@@ -90,3 +90,7 @@ Create a .env file in your project root (used for local runs outside of Docker C
 
 ### Interactive Swagger UI Documentation
 <img width="1574" height="617" alt="Swagger UI" src="https://github.com/user-attachments/assets/25cd5ce3-912b-450f-a47c-1b9b3011ed83" />
+
+### Docker Startup
+<img width="1307" height="314" alt="image" src="https://github.com/user-attachments/assets/84a669b2-a573-40c6-896d-efe6a8c1e35a" />
+
