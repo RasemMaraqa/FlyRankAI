@@ -1,7 +1,13 @@
 import sqlite3
 from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel
+import os
+import psycopg
+from dotenv import load_dotenv
+from psycopg.rows import dict_row
 
+load_dotenv()
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 app = FastAPI()
 
@@ -16,46 +22,37 @@ class TaskUpdate(BaseModel):
 
 
 def get_db():
-    conn = sqlite3.connect("tasks.db")
-    conn.row_factory = sqlite3.Row
+    conn = psycopg.connect(DATABASE_URL, row_factory=dict_row)
     return conn
 
 
 def init_db():
-    conn = get_db()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS tasks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT,
-            done INTEGER
-            )
-        """)
-
-    conn.commit()
-    conn.close()
+    with get_db() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS tasks (
+                    id SERIAL PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    done BOOLEAN DEFAULT FALSE
+                );
+            """)
+            conn.commit()
 
 
 def seed_db():
-    conn = get_db()
-    cursor = conn.cursor()
-    next_id = get_next_available_id()
-    cursor.execute("SELECT COUNT(*) FROM tasks")
-    count = cursor.fetchone()[0]
+    with get_db() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT COUNT(*) FROM tasks;")
+            count = cursor.fetchone()["count"]
 
-    if count == 0:
-        cursor.execute("INSERT INTO tasks (id, title, done) VALUES (?,?, ?)",
-                       (next_id, "Learn FastAPI", 1))
-        next_id += 1
-        cursor.execute("INSERT INTO tasks (id, title, done) VALUES (?,?, ?)",
-                       (next_id, "Build API", 0))
-        next_id += 1
-        cursor.execute("INSERT INTO tasks (id, title, done) VALUES (?,?, ?)",
-                       (next_id, "Push to GitHub", 1))
-
-    conn.commit()
-    conn.close()
+            if count == 0:
+                cursor.execute("""
+                    INSERT INTO tasks (title, done) VALUES 
+                    (%s, %s),
+                    (%s, %s),
+                    (%s, %s);
+                """, ("Learn FastAPI", True, "Build API", False, "Push to GitHub", True))
+                conn.commit()
 
 
 @app.on_event("startup")
