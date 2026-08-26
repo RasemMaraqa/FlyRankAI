@@ -13,7 +13,7 @@ app = FastAPI()
 
 class Task(BaseModel):
     title: str
-    
+
 
 class TaskUpdate(BaseModel):
     title: str
@@ -46,11 +46,12 @@ def seed_db():
 
             if count == 0:
                 cursor.execute("""
-                    INSERT INTO tasks (title, done) VALUES 
+                    INSERT INTO tasks (title, done) VALUES
                     (%s, %s),
                     (%s, %s),
                     (%s, %s);
-                """, ("Learn FastAPI", True, "Build API", False, "Push to GitHub", True))
+                """, ("Learn FastAPI", True, "Build API", False,
+                      "Push to GitHub", True))
                 conn.commit()
 
 
@@ -104,7 +105,7 @@ def get_tasks():
 @app.get("/tasks/{task_id}")
 def get_task(task_id: int):
     conn = get_db()
-    row = conn.execute("SELECT * FROM tasks WHERE id = ?",
+    row = conn.execute("SELECT * FROM tasks WHERE id = %s",
                        (task_id,)).fetchone()
     conn.close()
 
@@ -126,18 +127,16 @@ def create_task(body: Task):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Title cannot be empty"
         )
-
-    next_id = get_next_available_id()
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO tasks (id, title, done) VALUES (?,?, ?)",
-                   (next_id, title, 0))
+    cursor.execute(
+        "INSERT INTO tasks (title, done) VALUES (%s, %s) RETURNING *;",
+        (title, body.done)
+    )
     conn.commit()
 
-    new_task = conn.execute("SELECT * FROM tasks WHERE id = ?",
-                            (next_id,)).fetchone()
+    new_task = cursor.fetchone()
     conn.close()
-
     return dict(new_task)
 
 
@@ -152,7 +151,7 @@ def update_task(task_id: int, body: TaskUpdate):
     conn = get_db()
     cursor = conn.cursor()
     isexist = cursor.execute(
-        "SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
+        "SELECT * FROM tasks WHERE id = %s", (task_id,)).fetchone()
     if isexist is None:
         conn.close()
         raise HTTPException(
@@ -160,11 +159,12 @@ def update_task(task_id: int, body: TaskUpdate):
             detail=f"task {task_id} not found"
         )
 
-    cursor.execute("UPDATE tasks SET title = ?, done = ? WHERE id = ?",
-                   (title, int(body.done), task_id))
+    cursor.execute(
+        "UPDATE tasks SET title = %s, done = %s WHERE id = %s RETURNING *;",
+        (title, body.done, task_id)
+                   )
     conn.commit()
-    updated_task = cursor.execute("SELECT * FROM tasks WHERE id = ?",
-                                  (task_id,)).fetchone()
+    updated_task = cursor.fetchone()
     conn.close()
 
     return dict(updated_task)
@@ -175,7 +175,7 @@ def delete_task(task_id: int):
     conn = get_db()
     cursor = conn.cursor()
 
-    isexist = cursor.execute("SELECT * FROM tasks WHERE id = ?",
+    isexist = cursor.execute("SELECT * FROM tasks WHERE id = %s",
                              (task_id,)).fetchone()
     if isexist is None:
         conn.close()
@@ -184,7 +184,7 @@ def delete_task(task_id: int):
             detail="task not found"
         )
 
-    cursor.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+    cursor.execute("DELETE FROM tasks WHERE id = %s", (task_id,))
     conn.commit()
     conn.close()
 
