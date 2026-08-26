@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel
 import os
@@ -6,13 +8,14 @@ from dotenv import load_dotenv
 from psycopg.rows import dict_row
 
 load_dotenv()
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:dev@db:5432/tasks")
 
 app = FastAPI()
 
 
 class Task(BaseModel):
     title: str
+    done: Optional[bool] = False
 
 
 class TaskUpdate(BaseModel):
