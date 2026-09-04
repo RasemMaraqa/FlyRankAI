@@ -1,5 +1,5 @@
 from typing import Optional
-
+from supabase import Client, create_client
 from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel
 import os
@@ -9,6 +9,13 @@ from psycopg.rows import dict_row
 
 load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:dev@db:5432/tasks")
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise RuntimeError("SUPABASE_URL and SUPABASE_KEY must be configured")
+
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 app = FastAPI()
 
