@@ -30,6 +30,11 @@ class TaskUpdate(BaseModel):
     done: bool
 
 
+class AuthCredentials(BaseModel):
+    email: str
+    password: str
+
+
 def get_db():
     conn = psycopg.connect(DATABASE_URL, row_factory=dict_row)
     return conn
@@ -199,3 +204,67 @@ def delete_task(task_id: int):
     conn.close()
 
     return {"msg": "deleted"}
+
+
+@app.post("/auth/signup", status_code=status.HTTP_201_CREATED)
+def signup(credentials: AuthCredentials):
+    email = credentials.email.strip()
+    password = credentials.password.strip()
+
+    if not email or not password:
+        raise HTTPException(
+            status_code=400,
+            detail="Email and password are required"
+        )
+
+    try:
+        response = supabase.auth.sign_up({
+            "email": email,
+            "password": password
+        })
+
+        return {
+            "user": {
+                "id": str(response.user.id),
+                "email": response.user.email
+            }
+        }
+    except Exception as error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to create user--> {str(error)}"
+        )
+
+
+@app.post("/auth/login")
+def login(credentials: AuthCredentials):
+    email = credentials.email.strip()
+    password = credentials.password.strip()
+
+    if not email or not password:
+        raise HTTPException(
+            status_code=400,
+            detail="Email and password are required"
+        )
+
+    try:
+        response = supabase.auth.sign_in_with_password({
+            "email": email,
+            "password": password
+        })
+
+        response = supabase.auth.sign_in_with_password({
+            "email": email,
+            "password": password
+        })
+        
+        return {
+            "access_token": response.session.access_token,
+            "refresh_token": response.session.refresh_token,
+            "token_type": "bearer"
+        }
+    except Exception:
+        raise HTTPException(
+            status_code=401,
+            detail={"Invalid login credentials"},
+        )
