@@ -24,26 +24,23 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 app = FastAPI()
 
 
-def get_current_user(
-    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
-):
-    if credentials is None or credentials.schema.lower() != "bearer":
+def check_user(credentials=Depends(bearer_scheme)):
+    if credentials is None:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="token required"
+            status_code=401,
+            detail="Access token required"
         )
 
+    token = credentials.credentials
+
     try:
-        response = supabase.auth.get_user(credentials.credentials)
+        result = supabase.auth.get_user(token)
+        return result.user
 
-        if response.user is None:
-            raise ValueError("No user returned")
-
-        return response.user
     except Exception:
         raise HTTPException(
             status_code=401,
-            detail="invalid token"
+            detail="Invalid or expired token"
         )
 
 
@@ -305,38 +302,30 @@ def public_info():
 
 
 @app.get("/protected/profile")
-def protected_profile(authorization: str | None = Header(default=None)):
-    if not authorization:
-        raise HTTPException(
-            status_code=401,
-            detail="access token required"
-        )
+def protected_profile(user=Depends(check_user)):
+    return {
+        "id": str(user.id),
+        "email": user.email,
+        "created_at": str(user.created_at)
+    }
 
-    parts = authorization.split()
 
-    if len(parts) != 2 or parts[0].lower() != "bearer":
-        raise HTTPException(
-            status_code=401,
-            detail="Access token required"
-        )
+@app.get("/protected/dashboard")
+def protected_dashboard(user=Depends(check_user)):
+    return {
+        "message": "Welcome to your dashboard",
+        "email": user.email
+    }
 
-    token = parts[1]
 
+@app.post("/auth/logout", status_code=204)
+def logout(user=Depends(check_user)):
     try:
-        response = supabase.auth.get_user(token)
-        user = response.user
-
-        if user is None:
-            raise ValueError("No user returned")
-
-        return {
-            "id": str(user.id),
-            "email": user.email,
-            "created_at": str(user.created_at)
-        }
+        supabase.auth.sign_out()
+        return
 
     except Exception:
         raise HTTPException(
-            status_code=401,
-            detail="invalid token"
+            status_code=400,
+            detail={"error": "Logout failed"}
         )
