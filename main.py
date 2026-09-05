@@ -1,6 +1,7 @@
 from typing import Optional
 from supabase import Client, create_client
-from fastapi import FastAPI, HTTPException, status, Header
+from fastapi import FastAPI, HTTPException, status, Header, Depends
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 import os
 import psycopg
@@ -8,9 +9,12 @@ from dotenv import load_dotenv
 from psycopg.rows import dict_row
 
 load_dotenv()
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:dev@db:5432/tasks")
+DATABASE_URL = os.getenv("DATABASE_URL",
+                         "postgresql://postgres:dev@db:5432/tasks")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+bearer_scheme = HTTPBearer(auto_error=False)
 
 if not SUPABASE_URL or not SUPABASE_KEY:
     raise RuntimeError("SUPABASE_URL and SUPABASE_KEY must be configured")
@@ -18,6 +22,29 @@ if not SUPABASE_URL or not SUPABASE_KEY:
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 app = FastAPI()
+
+
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+):
+    if credentials is None or credentials.schema.lower() != "bearer":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="token required"
+        )
+
+    try:
+        response = supabase.auth.get_user(credentials.credentials)
+
+        if response.user is None:
+            raise ValueError("No user returned")
+
+        return response.user
+    except Exception:
+        raise HTTPException(
+            status_code=401,
+            detail="invalid token"
+        )
 
 
 class Task(BaseModel):

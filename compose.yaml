@@ -3,7 +3,8 @@ services:
     build: .
     ports:
       - "8000:8000"
-
+    env_file:
+      - .env
     environment:
       DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@db:5432/tasks
     depends_on:
