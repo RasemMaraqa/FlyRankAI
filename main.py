@@ -1,6 +1,6 @@
 from typing import Optional
 from supabase import Client, create_client
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Header
 from pydantic import BaseModel
 import os
 import psycopg
@@ -268,3 +268,27 @@ def login(credentials: AuthCredentials):
             status_code=401,
             detail={"Invalid login credentials"},
         )
+
+
+@app.get("/public/info")
+def public_info():
+    return {"message": "This is a public endpoint accessible without authentication."}
+
+
+@app.get("/protected/profile")
+def protected_profile(authorization: str | None = Header(default=None)):
+    if not authorization:
+        raise HTTPException(
+            status_code=401,
+            detail="access token required"
+        )
+
+    parts = authorization.split()
+
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        raise HTTPException(
+            status_code=401,
+            detail="Access token required"
+        )
+
+    return {"message": "Token was presented"}
