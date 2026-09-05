@@ -1,7 +1,7 @@
 from typing import Optional
 from supabase import Client, create_client
 from fastapi import FastAPI, HTTPException, status, Header, Depends
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.security import HTTPBearer
 from pydantic import BaseModel
 import os
 import psycopg
