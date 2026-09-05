@@ -272,7 +272,9 @@ def login(credentials: AuthCredentials):
 
 @app.get("/public/info")
 def public_info():
-    return {"message": "This is a public endpoint accessible without authentication."}
+    return {
+        "message":
+        "This is a public endpoint accessible without authentication."}
 
 
 @app.get("/protected/profile")
@@ -291,4 +293,23 @@ def protected_profile(authorization: str | None = Header(default=None)):
             detail="Access token required"
         )
 
-    return {"message": "Token was presented"}
+    token = parts[1]
+
+    try:
+        response = supabase.auth.get_user(token)
+        user = response.user
+
+        if user is None:
+            raise ValueError("No user returned")
+
+        return {
+            "id": str(user.id),
+            "email": user.email,
+            "created_at": str(user.created_at)
+        }
+
+    except Exception:
+        raise HTTPException(
+            status_code=401,
+            detail="invalid token"
+        )
